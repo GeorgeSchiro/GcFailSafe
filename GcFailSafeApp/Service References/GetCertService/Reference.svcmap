@@ -19,13 +19,13 @@
     <ServiceContractMappings />
   </ClientOptions>
   <MetadataSources>
-    <MetadataSource Address="https://secure_certificate_service_goes_here/GetCert/Service.svc" Protocol="http" SourceId="1" />
+    <MetadataSource Address="secure_certificate_service_goes_here" Protocol="http" SourceId="1" />
   </MetadataSources>
   <Metadata>
-    <MetadataFile FileName="Service.xsd" MetadataType="Schema" ID="e7dcde44-3a29-4e16-99d6-7ebd9fe6e91e" SourceId="1" SourceUrl="https://secure_certificate_service_goes_here/GetCert/Service.svc?xsd=xsd0" />
-    <MetadataFile FileName="Service1.xsd" MetadataType="Schema" ID="465d3a63-20e3-4c6c-ad55-1836c67fc369" SourceId="1" SourceUrl="https://secure_certificate_service_goes_here/GetCert/Service.svc?xsd=xsd1" />
-    <MetadataFile FileName="Service.disco" MetadataType="Disco" ID="ba332be1-45c9-46d5-8f13-083c449381eb" SourceId="1" SourceUrl="https://secure_certificate_service_goes_here/GetCert/Service.svc?disco" />
-    <MetadataFile FileName="GetCertService.wsdl" MetadataType="Wsdl" ID="bf38e8f3-abc9-42d2-98d5-ec785f3d3192" SourceId="1" SourceUrl="https://secure_certificate_service_goes_here/GetCert/Service.svc?wsdl" />
+    <MetadataFile FileName="Service.xsd" MetadataType="Schema" ID="e7dcde44-3a29-4e16-99d6-7ebd9fe6e91e" SourceId="1" SourceUrl="secure_certificate_service_goes_here?xsd=xsd0" />
+    <MetadataFile FileName="Service1.xsd" MetadataType="Schema" ID="465d3a63-20e3-4c6c-ad55-1836c67fc369" SourceId="1" SourceUrl="secure_certificate_service_goes_here?xsd=xsd1" />
+    <MetadataFile FileName="Service.disco" MetadataType="Disco" ID="ba332be1-45c9-46d5-8f13-083c449381eb" SourceId="1" SourceUrl="secure_certificate_service_goes_here?disco" />
+    <MetadataFile FileName="GetCertService.wsdl" MetadataType="Wsdl" ID="bf38e8f3-abc9-42d2-98d5-ec785f3d3192" SourceId="1" SourceUrl="secure_certificate_service_goes_here?wsdl" />
   </Metadata>
   <Extensions>
     <ExtensionFile FileName="configuration91.svcinfo" Name="configuration91.svcinfo" />

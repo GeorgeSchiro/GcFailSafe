@@ -245,6 +245,7 @@ Notes:
 
                     bool            lbSkipLogPsOutput = loProfile.bValue("-SkipLogPsOutput", true);
                     bool            lbUseBindingsListOverride = loProfile.bValue("-UseBindingsListOverride", false);
+                    bool            lbMainLoopStopped = false;
                     string          lsBindingsListOverride = loProfile.sValue("-BindingsListOverride", Environment.NewLine + "No bindings have been defined." + Environment.NewLine);
                     string          lsKey = null;
                     string          lsNL = "'\r\n-";
@@ -252,7 +253,7 @@ Notes:
                                     if ( lbUseBindingsListOverride )
                                         lsBindings = lsBindingsListOverride.Replace(Environment.NewLine, "");
                                     else
-                                        Env.bRunPowerScript(out lsBindings, false, null, loProfile.sValue("-ShowBindingsCommand", "netsh http show sslcert"), false, lbSkipLogPsOutput);
+                                        Env.bRunPowerScript(ref lbMainLoopStopped, out lsBindings, null, loProfile.sValue("-ShowBindingsCommand", "netsh http show sslcert"), false, lbSkipLogPsOutput);
                     StringBuilder   lsbBindings = new StringBuilder(lsBindings);
                                     lsbBindings.Replace(lsKey="IP:port"                                                 , lsNL + " Binding=[\r\n-" + lsKey);
                                     lsbBindings.Replace(lsKey="Hostname:port"                                           , lsNL + " Binding=[\r\n-" + lsKey);
@@ -496,40 +497,58 @@ Notes:
             }
             finally
             {
-                try
+                if ( !loProfile.bExit )
                 {
-                    if ( !loProfile.bExit && !loProfile.bValue("-UseStandAloneMode", true) )
+                    bool lbSuccess = false;
+
+                    try
                     {
-                        // If no bindings could be found, return the log instead.
-                        if ( 0 == loBindingsProfile.Count )
-                            loReturnProfile["-Log"] = File.ReadAllText(Env.sLogPathFile);
-
-                        Env.LogIt("");
-                        Env.LogIt("Sending results to service ...");
-
-                        loProfile["-CertificateDomainName"] = moDnsNamesProfile.sValue("-DnsName", loProfile.sValue("-CertificateDomainName", ""));
-                        loProfile["-ContactEmailAddress"] = "not needed here, but can't be empty";
-                        loProfile.Save();
-
-                        using (GetCertService.IGetCertServiceChannel loGetCertServiceClient = Env.oGetCertServiceFactory.CreateChannel())
+                        if ( !loProfile.bValue("-UseStandAloneMode", true) )
                         {
-                            tvProfile   loMinProfile = Env.oMinProfile(loProfile);
-                            byte[]      lbtArrayMinProfile = loMinProfile.btArrayZipped();
-                            string      lsHash = HashClass.sHashIt(loMinProfile);
+                            // If no bindings could be found, return the log instead.
+                            if ( 0 == loBindingsProfile.Count )
+                                loReturnProfile["-Log"] = File.ReadAllText(Env.sLogPathFile);
 
-                            loGetCertServiceClient.NotifyFailSafeInternalValidationResults(lsHash, lbtArrayMinProfile, loReturnProfile.btArrayZipped());
-                            if ( CommunicationState.Faulted == loGetCertServiceClient.State )
-                                loGetCertServiceClient.Abort();
-                            else
-                                loGetCertServiceClient.Close();
+                            // Add host profile (filtered).
+                            loReturnProfile["-HostProfile"] = Env.sHostProfile();
+
+                            loProfile["-CertificateDomainName"] = moDnsNamesProfile.sValue("-DnsName", loProfile.sValue("-CertificateDomainName", ""));
+                            loProfile["-ContactEmailAddress"] = "not needed here, but can't be empty";
+                            loProfile.Save();
+
+                            Env.LogIt("");
+                            Env.LogIt("Sending results to service ...");
+
+                            using (GetCertService.IGetCertServiceChannel loGetCertServiceClient = Env.oGetCertServiceFactory.CreateChannel())
+                            {
+                                tvProfile   loMinProfile = Env.oMinProfile(loProfile);
+                                byte[]      lbtArrayMinProfile = loMinProfile.btArrayZipped();
+                                string      lsHash = HashClass.sHashIt(loMinProfile);
+
+                                loGetCertServiceClient.NotifyFailSafeInternalValidationResults(lsHash, lbtArrayMinProfile, loReturnProfile.btArrayZipped());
+                                if ( CommunicationState.Faulted == loGetCertServiceClient.State )
+                                    loGetCertServiceClient.Abort();
+                                else
+                                    loGetCertServiceClient.Close();
+                            }
+
+                            Env.LogSuccess();
+
+                            lbSuccess = true;
                         }
-
-                        Env.LogSuccess();
                     }
-                }
-                catch (Exception ex)
-                {
-                    Env.LogIt(Env.sExceptionMessage(ex));
+                    catch (Exception ex)
+                    {
+                        Env.LogIt(Env.sExceptionMessage(ex));
+                    }
+
+                    if ( !loProfile.bValue("-UseStandAloneMode", true) )
+                    {
+                        tvProfile   loGcProfile = new tvProfile(loProfile.sRelativeToProfilePathFile("GetCert2.exe.config"), true);
+                                    loGcProfile.Remove("-FailSafe*");
+                                    loGcProfile.Add("-FailSafe" + (lbSuccess ? "Success" : "Failure"), DateTime.Now.ToString());
+                                    loGcProfile.Save();
+                    }
                 }
 
                 Application.Exit();
