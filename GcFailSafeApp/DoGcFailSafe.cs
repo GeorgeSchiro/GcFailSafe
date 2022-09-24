@@ -56,7 +56,7 @@ namespace GetCert2
             tvProfile   loProfile           = null;
             tvProfile   loBindingsProfile   = new tvProfile();
             tvProfile   loReturnProfile     = new tvProfile();
-            string      lsMsg = null;
+            string      lsMsg               = null;
             string      lsMsgPromptTail     = Environment.NewLine + Environment.NewLine + "Check the log for details.";
 
             try
@@ -180,10 +180,9 @@ A brief description of each feature follows.
 
 -SaveSansCmdLine=True
 
-    Set this switch False to leave the profile file untouched after a command line
-    has been passed to the EXE and merged with the profile. When true, everything
-    but command line keys will be saved. When false, not even status information
-    will be written to the profile file (ie. '{INI}').
+    Set this switch False to allow merged command-lines to be written to
+    the profile file (ie. ""{INI}""). When True, everything
+    but command-line keys will be saved.
 
 -ShowProfile=False
 
@@ -240,12 +239,27 @@ Notes:
                         Env.ResetConfigMechanism(loProfile);
                     }
 
+                    // Wait a random period each cycle to allow this client to run at times
+                    // other than the standard fail-safe time (skip if in stand-alone mode).
+                    int     liMaxRunTimeDelayMins = loProfile.iValue("-MaxRunTimeDelayMins", 60);
+                            if ( 0 != liMaxRunTimeDelayMins && !loProfile.bValue("-UseStandAloneMode", true)
+                                    && DateTime.Now.Hour < loProfile.iValue("-MaxHourToAllowRunTimeDelays", 6)
+                                    )
+                            {
+                                int liRunTimeDelayMins = new Random().Next(liMaxRunTimeDelayMins);
+
+                                Env.LogIt("");
+                                Env.LogIt(String.Format("Waiting {0} minutes ({1} minutes max) before the fail-safe run ..."
+                                                        , liRunTimeDelayMins, liMaxRunTimeDelayMins));
+
+                                Thread.Sleep(60000 * liRunTimeDelayMins);
+                            }
+
                     Env.LogIt("");
                     Env.LogIt("Fetching local certificate bindings ...");
 
                     bool            lbSkipLogPsOutput = loProfile.bValue("-SkipLogPsOutput", true);
                     bool            lbUseBindingsListOverride = loProfile.bValue("-UseBindingsListOverride", false);
-                    bool            lbMainLoopStopped = false;
                     string          lsBindingsListOverride = loProfile.sValue("-BindingsListOverride", Environment.NewLine + "No bindings have been defined." + Environment.NewLine);
                     string          lsKey = null;
                     string          lsNL = "'\r\n-";
@@ -253,7 +267,7 @@ Notes:
                                     if ( lbUseBindingsListOverride )
                                         lsBindings = lsBindingsListOverride.Replace(Environment.NewLine, "");
                                     else
-                                        Env.bRunPowerScript(ref lbMainLoopStopped, out lsBindings, null, loProfile.sValue("-ShowBindingsCommand", "netsh http show sslcert"), false, lbSkipLogPsOutput);
+                                        Env.bRunPowerScript(out lsBindings, null, loProfile.sValue("-ShowBindingsCommand", "netsh http show sslcert"), false, lbSkipLogPsOutput, true);
                     StringBuilder   lsbBindings = new StringBuilder(lsBindings);
                                     lsbBindings.Replace(lsKey="IP:port"                                                 , lsNL + " Binding=[\r\n-" + lsKey);
                                     lsbBindings.Replace(lsKey="Hostname:port"                                           , lsNL + " Binding=[\r\n-" + lsKey);
@@ -310,8 +324,14 @@ Notes:
                                     }
                                     else
                                     {
-                                        lsSplitPortArray = loBindingProfileRaw.sValue("-IP:port", "").Split(':');
-                                        loBindingProfile.LoadFromCommandLine(String.Format("-IP={0} -port={1}", lsSplitPortArray[0], lsSplitPortArray[1]), tvProfileLoadActions.Append);
+                                        string  lsIpAddress = null;
+                                                lsSplitPortArray = loBindingProfileRaw.sValue("-IP:port", "").Split(':');
+
+                                                // This approach handles IPv6 as well as IPv4.
+                                                for (int i=0; i < lsSplitPortArray.Length - 1; i++)
+                                                    lsIpAddress += (null == lsIpAddress ? "" : ":") + lsSplitPortArray[i];
+
+                                        loBindingProfile.LoadFromCommandLine(String.Format("-IP={0} -port={1}", lsIpAddress, lsSplitPortArray[lsSplitPortArray.Length - 1]), tvProfileLoadActions.Append);
                                     }
                                     loBindingProfile.LoadFromCommandLine(loBindingProfileRaw.ToString(), tvProfileLoadActions.Append);
 
@@ -341,8 +361,9 @@ Notes:
                         for (int i=0; i < loBindingsProfile.Count; i++)
                         {
                             DictionaryEntry             loEntry = loBindingsProfile.oEntry(i);
-                            bool                        lbSuccess = false;
+                            bool                        lbFailure = false;
                             bool                        lbInnocuous = false;
+                            bool                        lbSuccess = false;
                             tvProfile                   loBindingProfile = new tvProfile(loEntry.Value.ToString());
                                                         msDnsName = loBindingProfile.sValue("-Hostname", "");
                             bool                        lbHostnameIsIpAddress = String.IsNullOrEmpty(msDnsName);
@@ -376,16 +397,22 @@ Notes:
 
                                 if ( !loCert.Verify() )
                                 {
+                                    // Ignore self-signed "CN=localhost" certificates.
+                                    if ( "CN=localhost" != loCert.Issuer )
+                                        lbFailure = true;
+
                                     lsMsg = lsMsgPrefix + String.Format("The issuer is \"{0}\". This certificate is NOT VALID.", loCert.Issuer);
                                 }
                                 else
                                 if ( loCert.NotBefore > DateTime.Now )
                                 {
+                                    lbFailure = true;
                                     lsMsg = lsMsgPrefix + String.Format("This certificate is NOT VALID. It will be valid after \"{0}\".", loCert.NotBefore);
                                 }
                                 else
                                 if ( loCert.NotAfter < DateTime.Now )
                                 {
+                                    lbFailure = true;
                                     lsMsg = lsMsgPrefix + String.Format("This certificate is NOT VALID. It expired \"{0}\".", loCert.NotAfter);
                                 }
                                 else
@@ -393,6 +420,7 @@ Notes:
                                 {
                                     int liExpirationDays = (int)loCert.NotAfter.Subtract(DateTime.Now).TotalDays;
 
+                                    lbFailure = true;
                                     lsMsg = lsMsgPrefix + String.Format("This certificate will expire in {0} day{1}. It expires \"{2}\"."
                                                                         , liExpirationDays, 1==liExpirationDays ? "" : "s", loCert.NotAfter);
                                 }
@@ -404,13 +432,14 @@ Notes:
                                 }
                             }
 
-                            if ( lbSuccess)
-                                loReturnProfile.Add("-Success", this.oResultProfile(loResultProfile, lbSuccess, lsMsg).ToString());
+                            if ( lbFailure)
+                                loReturnProfile.Add("-Failure", this.oResultProfile(loResultProfile, lbSuccess, lsMsg).ToString());
                             else
                             if ( lbInnocuous)
                                 loReturnProfile.Add("-Warning", this.oResultProfile(loResultProfile, lbSuccess, lsMsg).ToString());
                             else
-                                loReturnProfile.Add("-Failure", this.oResultProfile(loResultProfile, lbSuccess, lsMsg).ToString());
+                            if ( lbSuccess)
+                                loReturnProfile.Add("-Success", this.oResultProfile(loResultProfile, lbSuccess, lsMsg).ToString());
 
                             Env.LogIt(lsMsg);
                         }
@@ -480,6 +509,9 @@ Notes:
 
                     if ( !lbNoPrompts && !lbAtLeastOneError )
                         MessageBox.Show("Process complete." + lsMsgPromptTail, System.Windows.Application.ResourceAssembly.GetName().Name);
+
+                    if ( lbAtLeastOneError )
+                        Environment.ExitCode = 1;
                 }
             }
             catch (Exception ex)
@@ -540,6 +572,7 @@ Notes:
                     catch (Exception ex)
                     {
                         Env.LogIt(Env.sExceptionMessage(ex));
+                        Environment.ExitCode = 1;
                     }
 
                     if ( !loProfile.bValue("-UseStandAloneMode", true) )
