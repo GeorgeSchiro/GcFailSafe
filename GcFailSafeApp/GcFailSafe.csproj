@@ -115,6 +115,7 @@
     <Content Include="Resources\images\Safe.ico" />
     <EmbeddedResource Include="Resources\Fetch\Microsoft.Web.Administration.dll" />
     <EmbeddedResource Include="Resources\Fetch\GcFailSafe.exe.config" />
+    <None Include="app.config" />
     <None Include="GcFailSafe.snk" />
     <None Include="Service References\GetCertService\Reference.svcmap">
       <Generator>WCF Proxy Generator</Generator>
