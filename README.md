@@ -6,7 +6,7 @@ Overview
 
 If a list of domain names is provided (see -DnsName below), it will be compared to the list of bound certificates. If a given -DnsName does not match any of the port bound certificates, an error will be reported.
 
-If 'stand-alone' mode is disabled (see -UseStandAloneMode below), the status of each bound digital certificate will be reported to the SCS service (see 'SafeTrust.org').
+If 'stand-alone' mode is disabled (see -UseStandAloneMode below), the status of each bound digital certificate will be reported to the SCS service (see 'GoGetCert.com').
 
 
 Features
@@ -69,7 +69,7 @@ Command-Line Usage
         GcFailSafe.exe -NoPrompts
 
 
-    Author:  George Schiro (GeoCode@SafeTrust.org)
+    Author:  George Schiro (GeoCode@GoGetCert.com)
 
     Date:    11/19/2020
 
@@ -152,8 +152,8 @@ Options and Features
 
 -UseStandAloneMode=True
 
-    Set this switch False and the software will use the SafeTrust Secure Certificate
-    Service (see 'SafeTrust.org') to communicate certificate status to various
+    Set this switch False and the software will use the GoGetCert Secure Certificate
+    Service (see 'GoGetCert.com') to communicate certificate status to various
     responsible parties.
 
 

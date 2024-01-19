@@ -8,9 +8,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("GcFailSafe")]
 [assembly: AssemblyDescription("Digital Certificate Status and Verification")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("SafeTrust.org")]
+[assembly: AssemblyCompany("GoGetCert.com")]
 [assembly: AssemblyProduct("GcFailSafe")]
-[assembly: AssemblyCopyright("Copyright © SafeTrust.org 2020-2121")]
+[assembly: AssemblyCopyright("Copyright © GoGetCert.com 2020-2121")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -23,5 +23,5 @@ using System.Runtime.InteropServices;
 //
 // You can specify all the values or you can default the Build and Revision Numbers 
 // by using the '*' as shown below:
-[assembly: AssemblyVersion("2.11")]
-[assembly: AssemblyFileVersion("2.11")]
+[assembly: AssemblyVersion("2.12")]
+[assembly: AssemblyFileVersion("2.12")]
