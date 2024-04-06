@@ -241,7 +241,7 @@ Notes:
 
                     // Wait a random period each cycle to allow this client to run at times
                     // other than the standard fail-safe time (skip if in stand-alone mode).
-                    int     liMaxRunTimeDelayMins = loProfile.iValue("-MaxRunTimeDelayMins", 60);
+                    int     liMaxRunTimeDelayMins = loProfile.iValue("-MaxRunTimeDelayMins", 20);
                             if ( 0 != liMaxRunTimeDelayMins && !loProfile.bValue("-UseStandAloneMode", true)
                                     && DateTime.Now.Hour < loProfile.iValue("-MaxHourToAllowRunTimeDelays", 6)
                                     )
