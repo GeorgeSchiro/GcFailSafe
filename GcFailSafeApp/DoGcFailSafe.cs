@@ -577,7 +577,11 @@ Notes:
 
                     if ( !loProfile.bValue("-UseStandAloneMode", true) )
                     {
-                        tvProfile   loGcProfile = new tvProfile(loProfile.sRelativeToProfilePathFile("GetCert2.exe.config"), true);
+                        string      lsPathFile = loProfile.sRelativeToProfilePathFile("GoGetCert.exe.config");
+                                    if ( !File.Exists(lsPathFile) )
+                                        lsPathFile = loProfile.sRelativeToProfilePathFile("GetCert2.exe.config");
+
+                        tvProfile   loGcProfile = new tvProfile(lsPathFile, true);
                                     loGcProfile.Remove("-FailSafe*");
                                     loGcProfile.Add("-FailSafe" + (lbSuccess ? "Success" : "Failure"), DateTime.Now.ToString());
                                     loGcProfile.Save();
