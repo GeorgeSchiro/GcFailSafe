@@ -214,9 +214,11 @@ Notes:
                             );
 
                     string lsFetchName = null;
+                    string lsLicenseCaption = "MIT License";
+                    string lsLicensePathFile = String.Format("{0} (GcFailSafe).txt", lsLicenseCaption);
 
                     // Fetch license.
-                    tvFetchResource.ToDisk("GetCert2", "MIT License.txt", null);
+                    tvFetchResource.ToDisk("GetCert2", lsLicensePathFile, null);
 
                     // Fetch simple setup.
                     tvFetchResource.ToDisk("GetCert2", String.Format("{0}{1}", Env.sFetchPrefix

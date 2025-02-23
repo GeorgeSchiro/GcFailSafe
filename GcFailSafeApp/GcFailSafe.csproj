@@ -107,12 +107,12 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="MIT License.txt" />
+    <EmbeddedResource Include="MIT License (GcFailSafe).txt" />
     <EmbeddedResource Include="GcFailSafe.zip" />
-    <EmbeddedResource Include="Resources\Fetch\Setup Application Folder.exe" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Resources\images\Safe.ico" />
+    <EmbeddedResource Include="Resources\Fetch\Setup Application Folder.exe" />
     <EmbeddedResource Include="Resources\Fetch\Microsoft.Web.Administration.dll" />
     <EmbeddedResource Include="Resources\Fetch\GcFailSafe.exe.config" />
     <None Include="GcFailSafe.snk" />
