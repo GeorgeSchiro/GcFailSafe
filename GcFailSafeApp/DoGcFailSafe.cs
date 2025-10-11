@@ -83,7 +83,7 @@ match any of the port bound certificates, an error will be reported.
 
 If 'stand-alone' mode is disabled (see -UseStandAloneMode below), the 
 status of each bound digital certificate will be reported to the SCS 
-service (see 'GoGetCert.com').
+service (see 'AutoCertNow.com').
     
 
 Command-Line Usage
@@ -107,7 +107,7 @@ This tells the software to run with no UI prompts:
     {EXE} -NoPrompts
 
 
-Author:  George Schiro (GeoCode@GoGetCert.com)
+Author:  George Schiro (GeoCode@AutoCertNow.com)
 
 Date:    11/19/2020
 
@@ -191,8 +191,8 @@ A brief description of each feature follows.
 
 -UseStandAloneMode=True
 
-    Set this switch False and the software will use the GoGetCert Secure Certificate
-    Service (see 'GoGetCert.com') to communicate certificate status to various
+    Set this switch False and the software will use the AutoCert Secure Certificate
+    Service (see 'AutoCertNow.com') to communicate certificate status to various
     responsible parties.
 
 
@@ -579,7 +579,7 @@ Notes:
 
                     if ( !loProfile.bValue("-UseStandAloneMode", true) )
                     {
-                        string      lsPathFile = loProfile.sRelativeToProfilePathFile("GoGetCert.exe.config");
+                        string      lsPathFile = loProfile.sRelativeToProfilePathFile("AutoCert.exe.config");
                                     if ( !File.Exists(lsPathFile) )
                                         lsPathFile = loProfile.sRelativeToProfilePathFile("GetCert2.exe.config");
 
