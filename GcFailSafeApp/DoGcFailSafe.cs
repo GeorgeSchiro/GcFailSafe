@@ -581,12 +581,17 @@ Notes:
                     {
                         string      lsPathFile = loProfile.sRelativeToProfilePathFile("AutoCert.exe.config");
                                     if ( !File.Exists(lsPathFile) )
+                                        lsPathFile = loProfile.sRelativeToProfilePathFile("GoGetCert.exe.config");
+                                    if ( !File.Exists(lsPathFile) )
                                         lsPathFile = loProfile.sRelativeToProfilePathFile("GetCert2.exe.config");
 
-                        tvProfile   loGcProfile = new tvProfile(lsPathFile, true);
-                                    loGcProfile.Remove("-FailSafe*");
-                                    loGcProfile.Add("-FailSafe" + (lbSuccess ? "Success" : "Failure"), DateTime.Now.ToString());
-                                    loGcProfile.Save();
+                        if ( File.Exists(lsPathFile) )
+                        {
+                            tvProfile   loGcProfile = new tvProfile(lsPathFile, true);
+                                        loGcProfile.Remove("-FailSafe*");
+                                        loGcProfile.Add("-FailSafe" + (lbSuccess ? "Success" : "Failure"), DateTime.Now.ToString());
+                                        loGcProfile.Save();
+                        }
                     }
                 }
 
