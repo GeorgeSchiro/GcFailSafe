@@ -108,6 +108,22 @@ Options and Features
 
     This help text.
 
+-IgnoreCertName= NO DEFAULT VALUE
+
+    This specifies a certificate name that should be skipped during binding
+    classification. Matching is case-insensitive.
+
+    Note: -DnsName verification is intentionally NOT suppressed by this list.
+          If the same name appears as a -DnsName entry (and is missing from
+    the actual port bindings), a failure is still reported.
+
+    Note: This key may appear any number of times in the profile.
+
+-IgnoreSelfSignedCerts=True
+
+    Set this switch False to include bound certificates with a Subject that
+    matches the Issuer (ie. self-signed). These are typically invalid.
+
 -LogEntryDateTimeFormatPrefix='yyyy-MM-dd hh:mm:ss:fff tt  '
 
     This format string is used to prepend a timestamp prefix to each log entry

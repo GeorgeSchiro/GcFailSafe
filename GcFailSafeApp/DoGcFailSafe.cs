@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using System.ServiceModel;
@@ -39,6 +40,14 @@ namespace GetCert2
             InitializeComponent();
         }
 
+        private bool bIsCertificateIgnored(string asCertName, tvProfile aoIgnoredCertNames)
+        {
+            foreach ( DictionaryEntry loEntry in aoIgnoredCertNames )
+                if ( String.Equals(asCertName, loEntry.Value.ToString().Trim(), StringComparison.OrdinalIgnoreCase) )
+                    return true;
+            return false;
+        }
+
         private string sServerId
         {
             get
@@ -61,7 +70,7 @@ namespace GetCert2
 
             try
             {
-                loProfile = new tvProfile(Environment.GetCommandLineArgs(), true);
+                loProfile = new tvProfile(Environment.GetCommandLineArgs().Skip(1).ToArray(), true);
                             tvProfile.oGlobal(loProfile);
 
                 lbNoPrompts = loProfile.bValue("-NoPrompts", false);
@@ -146,6 +155,22 @@ A brief description of each feature follows.
 -Help= SEE PROFILE FOR DEFAULT VALUE
 
     This help text.
+
+-IgnoreCertName= NO DEFAULT VALUE
+
+    This specifies a certificate name that should be skipped during binding
+    classification. Matching is case-insensitive.
+
+    Note: -DnsName verification is intentionally NOT suppressed by this list.
+          If the same name appears as a -DnsName entry (and is missing from
+    the actual port bindings), a failure is still reported.
+
+    Note: This key may appear any number of times in the profile.
+
+-IgnoreSelfSignedCerts=True
+
+    Set this switch False to include bound certificates with a Subject that
+    matches the Issuer (ie. self-signed). These are typically invalid.
 
 -LogEntryDateTimeFormatPrefix='yyyy-MM-dd hh:mm:ss:fff tt  '
 
@@ -241,6 +266,12 @@ Notes:
                         Env.ResetConfigMechanism(loProfile);
                     }
 
+                    Env.LogIt("");
+                    Env.LogIt(String.Format("Version {0} command-line: {1} {2}"
+                                                , FileVersionInfo.GetVersionInfo(loProfile.sExePathFile).FileVersion
+                                                , Path.GetFileName(loProfile.sExePathFile)
+                                                , String.Join(" ", loProfile.sInputCommandLineArray)));
+
                     // Wait a random period each cycle to allow this client to run at times
                     // other than the standard fail-safe time (skip if in stand-alone mode).
                     int     liMaxRunTimeDelayMins = loProfile.iValue("-MaxRunTimeDelayMins", 20);
@@ -260,6 +291,7 @@ Notes:
                     Env.LogIt("");
                     Env.LogIt("Fetching local certificate bindings ...");
 
+                    bool            lbIgnoreSelfSignedCerts = loProfile.bValue("-IgnoreSelfSignedCerts", true);
                     bool            lbSkipLogPsOutput = loProfile.bValue("-SkipLogPsOutput", true);
                     bool            lbUseBindingsListOverride = loProfile.bValue("-UseBindingsListOverride", false);
                     string          lsBindingsListOverride = loProfile.sValue("-BindingsListOverride", Environment.NewLine + "No bindings have been defined." + Environment.NewLine);
@@ -309,6 +341,7 @@ Notes:
                                         Env.LogIt("loBindingsProfileRaw:");
                                         Env.LogIt(loBindingsProfileRaw.ToString());
                                     }
+                    tvProfile       loIgnoredCertNames = loProfile.oOneKeyProfile("-IgnoreCertName");
 
                     Env.LogIt("");
                     Env.LogIt("Segregating IP from hostname bindings ...");
@@ -376,61 +409,80 @@ Notes:
                             string                      lsPort = loBindingProfile.sValue("-port", "-port not found");
                             string                      lsCertThumbprint = loBindingProfile.sValue("-CertificateHash", "-CertificateHash (ie. thumbprint) not found");
                             tvProfile                   loResultProfile = this.oResultProfile(msDnsName, lsCertThumbprint, loBindingProfile.iValue("-port", 0), lbHostnameIsIpAddress);
-                            X509Certificate2Collection  loCertCollection = loStore.Certificates.Find(X509FindType.FindByThumbprint, lsCertThumbprint, false);
+                            X509Certificate2Collection  loCertificateCollection = loStore.Certificates.Find(X509FindType.FindByThumbprint, lsCertThumbprint, false);
 
-                            if ( null == loCertCollection || 0 == loCertCollection.Count )
+                            if ( null == loCertificateCollection || 0 == loCertificateCollection.Count )
                             {
+                                if ( !lbHostnameIsIpAddress && this.bIsCertificateIgnored(msDnsName, loIgnoredCertNames) )
+                                {
+                                    Env.LogIt(String.Format("Excluding \"{0}\" per -IgnoreCertName.", msDnsName));
+                                    continue;
+                                }
+
                                 lbInnocuous = true;
                                 lsMsg = String.Format("The \"{0}:{1}\" thumbprint is \"{2}\", yet it can't be found in the local machine personal certificate store.", msDnsName, lsPort, lsCertThumbprint);
                             }
                             else
                             {
-                                X509Certificate2    loCert = loCertCollection[0];
-                                string              lsCertName = null;
-                                                    if ( lbHostnameIsIpAddress )
-                                                    {
-                                                        lsCertName = Env.sCertName(loCert);
-                                                        loBindingProfile["-HostnameIsIpAddress"] = lbHostnameIsIpAddress;
-                                                        loBindingProfile["-CertName"] = lsCertName;
-                                                        loBindingsProfile[i] = loBindingProfile.ToString();
-                                                    }
-                                string              lsMsgPrefix = String.Format("The \"{0}:{1}\" thumbprint is \"{2}\"{3}. ", msDnsName, lsPort, lsCertThumbprint
-                                                            , String.IsNullOrEmpty(lsCertName) ? "" : String.Format("(\"{0}\")", lsCertName));
+                                X509Certificate2    loCertificate = loCertificateCollection[0];
+                                string              lsCertName = Env.sCertName(loCertificate);
 
-                                if ( !loCert.Verify() )
+                                if ( this.bIsCertificateIgnored(lsCertName, loIgnoredCertNames) )
+                                {
+                                    Env.LogIt(String.Format("Excluding \"{0}\" per -IgnoreCertName.", lsCertName));
+                                    continue;
+                                }
+
+                                if ( lbIgnoreSelfSignedCerts && loCertificate.Subject == loCertificate.Issuer )
+                                {
+                                    Env.LogIt(String.Format("Excluding \"{0}\" per -IgnoreSelfSignedCerts.", lsCertName));
+                                    continue;
+                                }
+
+                                if ( lbHostnameIsIpAddress )
+                                {
+                                    loBindingProfile["-HostnameIsIpAddress"] = lbHostnameIsIpAddress;
+                                    loBindingProfile["-CertName"] = lsCertName;
+                                    loBindingsProfile[i] = loBindingProfile.ToString();
+                                }
+
+                                string              lsMsgPrefix = String.Format("The \"{0}:{1}\" thumbprint is \"{2}\"{3}. ", msDnsName, lsPort, lsCertThumbprint
+                                                            , !lbHostnameIsIpAddress ? "" : String.Format("(\"{0}\")", lsCertName));
+
+                                if ( !loCertificate.Verify() )
                                 {
                                     // Ignore self-signed "CN=localhost" certificates.
-                                    if ( "CN=localhost" != loCert.Issuer )
+                                    if ( "CN=localhost" != loCertificate.Issuer )
                                         lbFailure = true;
 
-                                    lsMsg = lsMsgPrefix + String.Format("The issuer is \"{0}\". This certificate is NOT VALID.", loCert.Issuer);
+                                    lsMsg = lsMsgPrefix + String.Format("The issuer is \"{0}\". This certificate is NOT VALID.", loCertificate.Issuer);
                                 }
                                 else
-                                if ( loCert.NotBefore > DateTime.Now )
+                                if ( loCertificate.NotBefore > DateTime.Now )
                                 {
                                     lbFailure = true;
-                                    lsMsg = lsMsgPrefix + String.Format("This certificate is NOT VALID. It will be valid after \"{0}\".", loCert.NotBefore);
+                                    lsMsg = lsMsgPrefix + String.Format("This certificate is NOT VALID. It will be valid after \"{0}\".", loCertificate.NotBefore);
                                 }
                                 else
-                                if ( loCert.NotAfter < DateTime.Now )
+                                if ( loCertificate.NotAfter < DateTime.Now )
                                 {
                                     lbFailure = true;
-                                    lsMsg = lsMsgPrefix + String.Format("This certificate is NOT VALID. It expired \"{0}\".", loCert.NotAfter);
+                                    lsMsg = lsMsgPrefix + String.Format("This certificate is NOT VALID. It expired \"{0}\".", loCertificate.NotAfter);
                                 }
                                 else
-                                if ( loCert.NotAfter < DateTime.Now.AddDays(loProfile.iValue("-MaxDaysBeforeExpiration", 14)) )
+                                if ( loCertificate.NotAfter < DateTime.Now.AddDays(loProfile.iValue("-MaxDaysBeforeExpiration", 14)) )
                                 {
-                                    int liExpirationDays = (int)loCert.NotAfter.Subtract(DateTime.Now).TotalDays;
+                                    int liExpirationDays = (int)loCertificate.NotAfter.Subtract(DateTime.Now).TotalDays;
 
                                     lbFailure = true;
                                     lsMsg = lsMsgPrefix + String.Format("This certificate will expire in {0} day{1}. It expires \"{2}\"."
-                                                                        , liExpirationDays, 1==liExpirationDays ? "" : "s", loCert.NotAfter);
+                                                                        , liExpirationDays, 1==liExpirationDays ? "" : "s", loCertificate.NotAfter);
                                 }
                                 else
                                 {
                                     lbSuccess = true;
                                     lsMsg = lsMsgPrefix + String.Format("The certificate is valid and will not expire for at least {0} days (ie. \"{1}\")."
-                                                                        , loProfile.iValue("-MaxDaysBeforeExpiration", 14), loCert.NotAfter);
+                                                                        , loProfile.iValue("-MaxDaysBeforeExpiration", 14), loCertificate.NotAfter);
                                 }
                             }
 
@@ -447,10 +499,6 @@ Notes:
                         }
 
                         Env.LogDone();
-                    }
-                    catch (Exception ex)
-                    {
-                        throw ex;
                     }
                     finally
                     {
@@ -474,9 +522,9 @@ Notes:
                         foreach(DictionaryEntry loEntry2 in loBindingsProfile)
                         {
                             tvProfile   loBindingProfile = new tvProfile(loEntry2.Value.ToString());
-                                        lbBindingExists = msDnsName == loBindingProfile.sValue("-Hostname", "");
+                                        lbBindingExists = String.Equals(msDnsName, loBindingProfile.sValue("-Hostname", ""), StringComparison.OrdinalIgnoreCase);
                                         if ( !lbBindingExists && loBindingProfile.bValue("-HostnameIsIpAddress", false) )
-                                            lbBindingExists = msDnsName == loBindingProfile.sValue("-CertName", "");
+                                            lbBindingExists = String.Equals(msDnsName, loBindingProfile.sValue("-CertName", ""), StringComparison.OrdinalIgnoreCase);
 
                             if ( lbBindingExists )
                             {
