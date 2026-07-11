@@ -90,6 +90,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Resources\Env.cs" />
+    <Compile Include="Resources\EnvMin.cs" />
     <Compile Include="Resources\HashClass.cs" />
     <Compile Include="Resources\tvToolbox\tvFetchResource.cs" />
     <Compile Include="Resources\tvToolbox\tvMessageBox\tvMessageBox.xaml.cs">
